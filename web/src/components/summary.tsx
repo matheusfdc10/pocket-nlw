@@ -4,15 +4,17 @@ import { DialogTrigger } from "./ui/dialog";
 import { InOrbitiIcon } from "./in-orbit-icon";
 import { Progress, ProgressIndicator } from "./ui/progress-bar";
 import { Separator } from "./ui/separator";
-import { OutlineButton } from "./ui/outline-button";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSummary } from "../http/get-summary";
 import dayjs from "dayjs";
 import ptBR from "dayjs/locale/pt-BR"
 import { PendingGoals } from "./pending-goals";
+import { deleteGoalCompletion } from "../http/delete-goal-completion";
 dayjs.locale(ptBR)
 
 export function Summary() {
+    const queryClient = useQueryClient();
+
     const { data, error, isLoading } =  useQuery({
         queryKey: ['summary'],
         queryFn: getSummary,
@@ -23,6 +25,12 @@ export function Summary() {
     const lastDayOfWeek = dayjs().endOf('week').format('D MMM');
 
     const completedPercentage = Math.round(data ? (data?.completed * 100 / data?.total) : 0)
+
+    async function handleDeleteGoalComplete(id: string) {
+        await deleteGoalCompletion(id);
+        queryClient.invalidateQueries({ queryKey: ['summary'] })
+        queryClient.invalidateQueries({ queryKey: ['pending-goals'] })
+    }
 
     return (
         <div className="py-10 max-w-[480px] px-5 mx-auto flex flex-col gap-6">
@@ -84,6 +92,9 @@ export function Summary() {
                                                 <span className="text-sm text-zinc-400">
                                                     Você completou <span className="text-zinc-100">"{goal.title}"</span> às <span className="text-zinc-100">{time}h</span>
                                                 </span>
+                                                <button onClick={() => handleDeleteGoalComplete(goal.id)} className="text-sm text-zinc-400 underline hover:text-zinc-300">
+                                                    Desfazer
+                                                </button>
                                             </li>
                                         )
                                     })}
